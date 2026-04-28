@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/grading")
 @RequiredArgsConstructor
@@ -16,35 +19,43 @@ public class GradingController {
     private final GradingService gradingService;
 
     @PostMapping("/auto/start/{submissionId}")
-    public ResponseEntity<Submission> startAutoGrading(@PathVariable Long submissionId) {
+    public ResponseEntity<Map<String, Object>> startAutoGrading(@PathVariable Long submissionId) {
         Submission submission = gradingService.startAutoGrading(submissionId);
-        return ResponseEntity.ok(submission);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("submission", submission);
+        result.put("status", submission.getStatus());
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/auto/perform/{submissionId}")
-    public ResponseEntity<Submission> performAutoGrading(@PathVariable Long submissionId) {
-        Submission submission = gradingService.performAutoGrading(submissionId);
-        return ResponseEntity.ok(submission);
+    public ResponseEntity<GradingService.GradingResult> performAutoGrading(@PathVariable Long submissionId) {
+        GradingService.GradingResult result = gradingService.performAutoGrading(submissionId);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/manual/start/{submissionId}")
-    public ResponseEntity<Submission> startManualGrading(@PathVariable Long submissionId) {
+    public ResponseEntity<Map<String, Object>> startManualGrading(@PathVariable Long submissionId) {
         Submission submission = gradingService.startManualGrading(submissionId);
-        return ResponseEntity.ok(submission);
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("submission", submission);
+        result.put("status", submission.getStatus());
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/manual/perform/{submissionId}")
-    public ResponseEntity<Submission> performManualGrading(
+    public ResponseEntity<GradingService.GradingResult> performManualGrading(
             @PathVariable Long submissionId,
             @Valid @RequestBody GradingDTO gradingDTO) {
-        Submission submission = gradingService.performManualGrading(submissionId, gradingDTO);
-        return ResponseEntity.ok(submission);
+        GradingService.GradingResult result = gradingService.performManualGrading(submissionId, gradingDTO);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/complete/{submissionId}")
-    public ResponseEntity<Submission> completeGrading(@PathVariable Long submissionId) {
-        Submission submission = gradingService.completeGrading(submissionId);
-        return ResponseEntity.ok(submission);
+    public ResponseEntity<GradingService.GradingResult> completeGrading(@PathVariable Long submissionId) {
+        GradingService.GradingResult result = gradingService.completeGrading(submissionId);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/python/auto-grade/{submissionId}")

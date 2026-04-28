@@ -27,6 +27,9 @@ public class Submission {
     @Column(nullable = false)
     private AssignmentStatus status = AssignmentStatus.SUBMITTED;
 
+    @Column(nullable = false)
+    private Integer versionNumber = 1;
+
     private LocalDateTime submittedAt;
 
     private LocalDateTime autoGradedAt;
@@ -41,13 +44,34 @@ public class Submission {
 
     private Integer totalScore;
 
+    private Integer objectiveScore;
+    private Integer objectiveMaxScore;
+    private Integer subjectiveScore;
+    private Integer subjectiveMaxScore;
+
+    private Double objectiveAccuracy;
+    private Double subjectiveScoreRate;
+
+    private Integer totalObjectiveQuestions;
+    private Integer correctObjectiveQuestions;
+    private Integer wrongObjectiveQuestions;
+    private Integer totalSubjectiveQuestions;
+    private Integer gradedSubjectiveQuestions;
+
     @Column(length = 1000)
     private String teacherComments;
 
     private Boolean isLate = false;
 
+    @Column(length = 500)
+    private String versionNote;
+
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SubmissionAnswer> answers = new ArrayList<>();
+
+    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL)
+    @OrderBy("versionNumber DESC")
+    private List<SubmissionVersion> versions = new ArrayList<>();
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -56,6 +80,9 @@ public class Submission {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (versionNumber == null) {
+            versionNumber = 1;
+        }
     }
 
     @PreUpdate
