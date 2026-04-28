@@ -9,36 +9,31 @@ import java.util.List;
 
 @Data
 @Entity
-@Table(name = "submissions")
-public class Submission {
+@Table(name = "submission_versions")
+public class SubmissionVersion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assignment_id", nullable = false)
-    private Assignment assignment;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id", nullable = false)
-    private User student;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AssignmentStatus status = AssignmentStatus.SUBMITTED;
+    @JoinColumn(name = "submission_id", nullable = false)
+    private Submission submission;
 
     @Column(nullable = false)
-    private Integer versionNumber = 1;
+    private Integer versionNumber;
 
     @Column(length = 500)
     private String versionNote;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AssignmentStatus status;
+
+    @Column(nullable = false)
     private LocalDateTime submittedAt;
 
     private LocalDateTime autoGradedAt;
-
     private LocalDateTime manuallyGradedAt;
-
     private LocalDateTime returnedAt;
 
     @Column(nullable = false)
@@ -66,9 +61,7 @@ public class Submission {
     private Integer assignmentTotalScore = 0;
 
     private Double objectiveAccuracy;
-
     private Double subjectiveScoreRate;
-
     private Double totalScoreRate;
 
     @Column(nullable = false)
@@ -81,25 +74,16 @@ public class Submission {
     private Integer wrongObjectiveQuestions = 0;
 
     @Column(nullable = false)
-    private Integer unansweredObjectiveQuestions = 0;
-
-    @Column(nullable = false)
     private Integer totalSubjectiveQuestions = 0;
 
     @Column(nullable = false)
     private Integer gradedSubjectiveQuestions = 0;
 
     @Column(nullable = false)
-    private Integer ungradedSubjectiveQuestions = 0;
-
-    @Column(nullable = false)
     private Integer totalQuestions = 0;
 
     @Column(nullable = false)
     private Integer answeredQuestions = 0;
-
-    @Column(nullable = false)
-    private Integer unansweredQuestions = 0;
 
     private Integer singleChoiceScore = 0;
     private Integer singleChoiceMaxScore = 0;
@@ -141,20 +125,17 @@ public class Submission {
 
     private Boolean isLate = false;
 
-    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SubmissionAnswer> answers = new ArrayList<>();
+    @OneToMany(mappedBy = "submissionVersion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SubmissionAnswerVersion> answers = new ArrayList<>();
 
-    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL)
-    @OrderBy("versionNumber DESC")
-    private List<SubmissionVersion> versions = new ArrayList<>();
+    @Column(nullable = false)
+    private Boolean isLatest = false;
 
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
         if (versionNumber == null) {
             versionNumber = 1;
         }
@@ -182,40 +163,5 @@ public class Submission {
         if (assignmentTotalScore == null) {
             assignmentTotalScore = 0;
         }
-        if (totalObjectiveQuestions == null) {
-            totalObjectiveQuestions = 0;
-        }
-        if (correctObjectiveQuestions == null) {
-            correctObjectiveQuestions = 0;
-        }
-        if (wrongObjectiveQuestions == null) {
-            wrongObjectiveQuestions = 0;
-        }
-        if (unansweredObjectiveQuestions == null) {
-            unansweredObjectiveQuestions = 0;
-        }
-        if (totalSubjectiveQuestions == null) {
-            totalSubjectiveQuestions = 0;
-        }
-        if (gradedSubjectiveQuestions == null) {
-            gradedSubjectiveQuestions = 0;
-        }
-        if (ungradedSubjectiveQuestions == null) {
-            ungradedSubjectiveQuestions = 0;
-        }
-        if (totalQuestions == null) {
-            totalQuestions = 0;
-        }
-        if (answeredQuestions == null) {
-            answeredQuestions = 0;
-        }
-        if (unansweredQuestions == null) {
-            unansweredQuestions = 0;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
     }
 }

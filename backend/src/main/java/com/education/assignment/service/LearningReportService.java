@@ -10,11 +10,13 @@ import com.education.assignment.repository.UserRepository;
 import com.education.assignment.repository.WrongQuestionRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LearningReportService {
@@ -38,9 +40,18 @@ public class LearningReportService {
         int gradedCount = 0;
         int totalScoreSum = 0;
         int maxScoreSum = 0;
+        
+        int totalObjectiveScore = 0;
+        int totalObjectiveMaxScore = 0;
+        int totalSubjectiveScore = 0;
+        int totalSubjectiveMaxScore = 0;
+        int totalCorrectObjective = 0;
+        int totalWrongObjective = 0;
+        int totalObjectiveQuestions = 0;
+        int totalSubjectiveQuestions = 0;
+        int totalGradedSubjective = 0;
         int totalQuestions = 0;
-        int correctQuestions = 0;
-        int wrongQuestions = 0;
+        int totalAnswered = 0;
         
         for (Submission submission : submissions) {
             if (submission.getSubmittedAt() != null &&
@@ -53,18 +64,53 @@ public class LearningReportService {
                     submission.getStatus() == AssignmentStatus.RETURNED ||
                     submission.getStatus() == AssignmentStatus.ARCHIVED) {
                     gradedCount++;
+                    
                     if (submission.getTotalScore() != null) {
                         totalScoreSum += submission.getTotalScore();
                     }
                     if (submission.getAssignment() != null && submission.getAssignment().getTotalScore() != null) {
                         maxScoreSum += submission.getAssignment().getTotalScore();
                     }
+                    
+                    if (submission.getObjectiveScore() != null) {
+                        totalObjectiveScore += submission.getObjectiveScore();
+                    }
+                    if (submission.getObjectiveMaxScore() != null) {
+                        totalObjectiveMaxScore += submission.getObjectiveMaxScore();
+                    }
+                    if (submission.getSubjectiveScore() != null) {
+                        totalSubjectiveScore += submission.getSubjectiveScore();
+                    }
+                    if (submission.getSubjectiveMaxScore() != null) {
+                        totalSubjectiveMaxScore += submission.getSubjectiveMaxScore();
+                    }
+                    if (submission.getCorrectObjectiveQuestions() != null) {
+                        totalCorrectObjective += submission.getCorrectObjectiveQuestions();
+                    }
+                    if (submission.getWrongObjectiveQuestions() != null) {
+                        totalWrongObjective += submission.getWrongObjectiveQuestions();
+                    }
+                    if (submission.getTotalObjectiveQuestions() != null) {
+                        totalObjectiveQuestions += submission.getTotalObjectiveQuestions();
+                    }
+                    if (submission.getTotalSubjectiveQuestions() != null) {
+                        totalSubjectiveQuestions += submission.getTotalSubjectiveQuestions();
+                    }
+                    if (submission.getGradedSubjectiveQuestions() != null) {
+                        totalGradedSubjective += submission.getGradedSubjectiveQuestions();
+                    }
+                    if (submission.getTotalQuestions() != null) {
+                        totalQuestions += submission.getTotalQuestions();
+                    }
+                    if (submission.getAnsweredQuestions() != null) {
+                        totalAnswered += submission.getAnsweredQuestions();
+                    }
                 }
             }
         }
         
         Long unresolvedWrongCount = wrongQuestionRepository.countByStudentIdAndIsResolved(studentId, false);
-        wrongQuestions = unresolvedWrongCount.intValue();
+        Long resolvedWrongCount = wrongQuestionRepository.countByStudentIdAndIsResolved(studentId, true);
         
         LearningReport report = new LearningReport();
         report.setStudent(student);
@@ -83,11 +129,39 @@ public class LearningReportService {
         }
         
         report.setTotalQuestions(totalQuestions);
-        report.setCorrectQuestions(correctQuestions);
-        report.setWrongQuestions(wrongQuestions);
+        report.setCorrectQuestions(totalCorrectObjective);
+        report.setWrongQuestions(totalWrongObjective);
+        report.setUnresolvedWrongQuestions(unresolvedWrongCount.intValue());
+        report.setResolvedWrongQuestions(resolvedWrongCount.intValue());
+        
+        report.setTotalObjectiveScore(totalObjectiveScore);
+        report.setTotalObjectiveMaxScore(totalObjectiveMaxScore);
+        report.setTotalSubjectiveScore(totalSubjectiveScore);
+        report.setTotalSubjectiveMaxScore(totalSubjectiveMaxScore);
+        report.setTotalObjectiveQuestions(totalObjectiveQuestions);
+        report.setTotalSubjectiveQuestions(totalSubjectiveQuestions);
+        report.setTotalGradedSubjective(totalGradedSubjective);
+        
+        if (totalObjectiveMaxScore > 0) {
+            report.setAverageObjectiveAccuracy((double) totalObjectiveScore / totalObjectiveMaxScore * 100);
+        } else {
+            report.setAverageObjectiveAccuracy(0.0);
+        }
+        
+        if (totalObjectiveQuestions > 0) {
+            report.setOverallObjectiveAccuracy((double) totalCorrectObjective / totalObjectiveQuestions * 100);
+        } else {
+            report.setOverallObjectiveAccuracy(0.0);
+        }
+        
+        if (totalSubjectiveMaxScore > 0 && totalGradedSubjective > 0) {
+            report.setAverageSubjectiveScoreRate((double) totalSubjectiveScore / totalSubjectiveMaxScore * 100);
+        } else {
+            report.setAverageSubjectiveScoreRate(0.0);
+        }
         
         if (totalQuestions > 0) {
-            report.setAccuracyRate((double) correctQuestions / totalQuestions * 100);
+            report.setAccuracyRate((double) totalCorrectObjective / totalQuestions * 100);
         } else {
             report.setAccuracyRate(0.0);
         }
@@ -96,6 +170,9 @@ public class LearningReportService {
         report.setKnowledgePointAnalysis(generateKnowledgeAnalysis(studentId));
         report.setRecommendations(generateRecommendations(report));
         report.setGeneratedAt(LocalDateTime.now());
+        
+        log.info("学习报告生成完成，studentId={}, 类型={}, 平均分={}", 
+                studentId, reportType, report.getAverageScore());
         
         return learningReportRepository.save(report);
     }
@@ -130,43 +207,122 @@ public class LearningReportService {
 
     private String generateSummary(LearningReport report) {
         StringBuilder summary = new StringBuilder();
-        summary.append("报告期间：完成了 ").append(report.getSubmittedAssignments()).append(" 份作业。");
-        summary.append("平均得分：").append(String.format("%.1f", report.getAverageScore())).append("分。");
-        summary.append("未解决的错题：").append(report.getWrongQuestions()).append(" 道。");
+        summary.append("【学习概况】\n");
+        summary.append("报告期间：完成了 ").append(report.getSubmittedAssignments()).append(" 份作业，已批改 ").append(report.getGradedAssignments()).append(" 份。\n");
+        summary.append("平均得分：").append(String.format("%.1f", report.getAverageScore())).append("分。\n\n");
+        
+        summary.append("【客观题统计】\n");
+        summary.append("总题数：").append(report.getTotalObjectiveQuestions()).append(" 道\n");
+        summary.append("正确：").append(report.getCorrectQuestions()).append(" 道，错误：").append(report.getWrongQuestions()).append(" 道\n");
+        summary.append("得分：").append(report.getTotalObjectiveScore()).append("/").append(report.getTotalObjectiveMaxScore()).append("\n");
+        summary.append("正确率：").append(String.format("%.1f", report.getOverallObjectiveAccuracy())).append("%\n\n");
+        
+        summary.append("【主观题统计】\n");
+        summary.append("总题数：").append(report.getTotalSubjectiveQuestions()).append(" 道\n");
+        summary.append("已批改：").append(report.getTotalGradedSubjective()).append(" 道\n");
+        summary.append("得分：").append(report.getTotalSubjectiveScore()).append("/").append(report.getTotalSubjectiveMaxScore()).append("\n");
+        summary.append("得分率：").append(String.format("%.1f", report.getAverageSubjectiveScoreRate())).append("%\n\n");
+        
+        summary.append("【错题情况】\n");
+        summary.append("未解决错题：").append(report.getUnresolvedWrongQuestions()).append(" 道\n");
+        summary.append("已解决错题：").append(report.getResolvedWrongQuestions()).append(" 道");
+        
         return summary.toString();
     }
 
     private String generateKnowledgeAnalysis(Long studentId) {
         List<Object[]> results = wrongQuestionRepository.countWrongQuestionsByKnowledgePoint(studentId);
         if (results.isEmpty()) {
-            return "暂无知识点分析数据。";
+            return "暂无知识点分析数据。您的表现非常出色，没有错题记录！";
         }
         
-        StringBuilder analysis = new StringBuilder("知识点掌握情况分析：\n");
+        StringBuilder analysis = new StringBuilder("【知识点掌握情况分析】\n\n");
+        
+        int totalWrong = 0;
+        for (Object[] result : results) {
+            Long count = (Long) result[1];
+            totalWrong += count;
+        }
+        
+        analysis.append("总计知识点错题：").append(totalWrong).append(" 次\n\n");
+        
         for (Object[] result : results) {
             String kp = (String) result[0];
             Long count = (Long) result[1];
-            if (kp != null && !kp.isEmpty()) {
-                analysis.append("- ").append(kp).append("：错误 ").append(count).append(" 次\n");
+            
+            if (kp != null && !kp.isEmpty() && count > 0) {
+                double percentage = totalWrong > 0 ? (double) count / totalWrong * 100 : 0;
+                analysis.append("● ").append(kp).append("：错误 ").append(count).append(" 次 (占比 ").append(String.format("%.1f", percentage)).append("%)\n");
             }
         }
+        
+        analysis.append("\n【薄弱知识点建议】\n");
+        analysis.append("请重点复习以上错误次数较多的知识点，多做相关练习题以巩固理解。");
+        
         return analysis.toString();
     }
 
     private String generateRecommendations(LearningReport report) {
-        StringBuilder recommendations = new StringBuilder();
+        StringBuilder recommendations = new StringBuilder("【个性化学习建议】\n\n");
         
-        if (report.getAverageScore() < 60) {
-            recommendations.append("建议：巩固基础知识，多做练习题。\n");
-        } else if (report.getAverageScore() < 80) {
-            recommendations.append("建议：继续努力，重点攻克薄弱知识点。\n");
+        double avgScore = report.getAverageScore();
+        double objAccuracy = report.getOverallObjectiveAccuracy();
+        double subjRate = report.getAverageSubjectiveScoreRate();
+        
+        if (avgScore < 60) {
+            recommendations.append("📚 总体建议：目前成绩偏低，建议优先巩固基础知识。\n");
+            recommendations.append("   - 先完成所有作业的客观题部分，确保基础分不丢\n");
+            recommendations.append("   - 主观题可以先尝试回答，再对照参考答案学习\n");
+        } else if (avgScore < 80) {
+            recommendations.append("📚 总体建议：成绩良好，但仍有提升空间。\n");
+            recommendations.append("   - 重点攻克薄弱知识点，争取全面提高\n");
+            recommendations.append("   - 主观题部分需要加强练习\n");
         } else {
-            recommendations.append("建议：继续保持，可以挑战更难的题目。\n");
+            recommendations.append("📚 总体建议：成绩优秀，继续保持！\n");
+            recommendations.append("   - 可以挑战更难的题目，拓展知识面\n");
+            recommendations.append("   - 帮助其他同学，教学相长\n");
         }
         
-        if (report.getWrongQuestions() > 0) {
-            recommendations.append("错题提醒：您有 ").append(report.getWrongQuestions())
-                    .append(" 道未解决的错题，建议及时复习。\n");
+        recommendations.append("\n");
+        
+        if (objAccuracy < 70) {
+            recommendations.append("✅ 客观题建议：正确率有待提高。\n");
+            recommendations.append("   - 做题时仔细审题，避免粗心错误\n");
+            recommendations.append("   - 建立错题本，定期复习错题\n");
+        } else if (objAccuracy < 90) {
+            recommendations.append("✅ 客观题建议：正确率良好。\n");
+            recommendations.append("   - 保持现有水平，争取更高正确率\n");
+        } else {
+            recommendations.append("✅ 客观题建议：正确率优秀！\n");
+            recommendations.append("   - 继续保持，可以挑战难度更高的题目\n");
+        }
+        
+        recommendations.append("\n");
+        
+        if (report.getTotalSubjectiveQuestions() > 0) {
+            if (subjRate < 60) {
+                recommendations.append("✍️ 主观题建议：得分率较低。\n");
+                recommendations.append("   - 认真阅读题目要求，理解答题要点\n");
+                recommendations.append("   - 参考答案的答题思路，学习答题技巧\n");
+            } else if (subjRate < 80) {
+                recommendations.append("✍️ 主观题建议：得分率良好。\n");
+                recommendations.append("   - 继续练习，注意答题的完整性\n");
+            } else {
+                recommendations.append("✍️ 主观题建议：得分率优秀！\n");
+                recommendations.append("   - 保持答题思路清晰，内容完整\n");
+            }
+        }
+        
+        recommendations.append("\n");
+        
+        if (report.getUnresolvedWrongQuestions() > 0) {
+            recommendations.append("⚠️ 错题提醒：您有 ").append(report.getUnresolvedWrongQuestions())
+                    .append(" 道未解决的错题。\n");
+            recommendations.append("   - 建议及时复习错题，理解错误原因\n");
+            recommendations.append("   - 可以重做一遍错题，检查是否真正掌握\n");
+            recommendations.append("   - 错题解决后记得标记为已解决\n");
+        } else {
+            recommendations.append("🎉 恭喜！您没有未解决的错题，继续保持！\n");
         }
         
         return recommendations.toString();

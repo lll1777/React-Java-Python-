@@ -42,6 +42,21 @@ public class LearningReport {
     private Integer correctQuestions;
     private Integer wrongQuestions;
 
+    private Integer unresolvedWrongQuestions;
+    private Integer resolvedWrongQuestions;
+
+    private Integer totalObjectiveScore;
+    private Integer totalObjectiveMaxScore;
+    private Integer totalSubjectiveScore;
+    private Integer totalSubjectiveMaxScore;
+    private Integer totalObjectiveQuestions;
+    private Integer totalSubjectiveQuestions;
+    private Integer totalGradedSubjective;
+
+    private Double averageObjectiveAccuracy;
+    private Double overallObjectiveAccuracy;
+    private Double averageSubjectiveScoreRate;
+
     private Double accuracyRate;
 
     @Column(columnDefinition = "TEXT")
